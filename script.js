@@ -306,7 +306,8 @@ function renderStar(drawable) {
 }
 
 function animate() {
-  ctx.fillStyle = `rgba(0, 0, 0, ${settings.starTrailAlpha})`
+  const dynamicTrailAlpha = settings.starTrailAlpha * (1 - thrust * 0.5)
+  ctx.fillStyle = `rgba(0, 0, 0, ${dynamicTrailAlpha})`
   ctx.fillRect(0, 0, width, height)
   thrust += (targetThrust - thrust) * 0.05
   const speed = settings.baseSpeed + thrust * settings.maxThrustSpeed
