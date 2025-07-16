@@ -190,8 +190,6 @@ function initStars() {
   }
 }
 
-let jj = 0
-
 function updateStars() {
   const maxDistSq = Math.pow(settings.fieldSize * 2, 2)
 
