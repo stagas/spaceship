@@ -4,13 +4,13 @@ const ctx = canvas.getContext('2d')
 const settings = {
   numStars: 2000,
   fieldSize: 8000,
-  projectionScale: 400,
-  baseSpeed: 0.03,
-  maxThrustSpeed: 2,
-  starSize: 0.01,
+  projectionScale: 300,
+  baseSpeed: 0.1,
+  maxThrustSpeed: 8,
+  starSize: 1,
   starTrailAlpha: 0.4,
   turnRateSensitivity: 0.05,
-  trailLength: 5,
+  trailLength: 3,
 
   starColors: ['#ffffff', '#ffffaa', '#aaaaff', '#ffaaaa', '#aaffaa'],
   thrustBar: { width: 24, height: 120, margin: 24 },
@@ -25,6 +25,7 @@ let roll = 0
 let yawRate = 0, pitchRate = 0
 let targetYawRate = 0, targetPitchRate = 0, targetRoll = 0
 let mouseX = 0, mouseY = 0
+let dynamicTurnSensitivity = 0
 const turnSpeed = 0.08
 const maxTurnAngle = Math.PI / 6
 
@@ -178,7 +179,7 @@ function createStar() {
     z: (Math.random() - 0.5) * settings.fieldSize * 4,
     color: settings.starColors[Math.floor(Math.random() * settings.starColors.length)],
     trail: [],
-    size: 1 + Math.pow(Math.random(), 10) * 4000,
+    size: 1 + Math.pow(Math.random(), 10) * 40,
   }
 }
 
@@ -306,11 +307,22 @@ function renderStar(drawable) {
 }
 
 function animate() {
-  const dynamicTrailAlpha = settings.starTrailAlpha * (1 - thrust * 0.5)
+  const dynamicTrailAlpha = settings.starTrailAlpha * (1 - thrust * 0.6)
   ctx.fillStyle = `rgba(0, 0, 0, ${dynamicTrailAlpha})`
   ctx.fillRect(0, 0, width, height)
   thrust += (targetThrust - thrust) * 0.05
   const speed = settings.baseSpeed + thrust * settings.maxThrustSpeed
+
+  // Calculate dynamic turn sensitivity based on thrust state
+  dynamicTurnSensitivity = settings.turnRateSensitivity * (1 + targetThrust * 2)
+
+  // Calculate target turn rates based on current mouse position
+  const offsetX = (mouseX - centerX) / centerX
+  const offsetY = (mouseY - centerY) / centerY
+
+  targetYawRate = offsetX * dynamicTurnSensitivity
+  targetPitchRate = -offsetY * dynamicTurnSensitivity
+  targetRoll = offsetX * maxTurnAngle * 1.5  // Mouse left/right = roll (banking)
 
   // Smoothly update roll and turn rates
   const actualTurnSpeed = turnSpeed + thrust * 0.04
@@ -390,20 +402,14 @@ window.addEventListener('resize', resizeCanvas)
 window.addEventListener('mousemove', function (event) {
   mouseX = event.clientX
   mouseY = event.clientY
-
-  // Calculate target turn rates based on mouse position
-  const offsetX = (mouseX - centerX) / centerX
-  const offsetY = (mouseY - centerY) / centerY
-
-  targetYawRate = offsetX * settings.turnRateSensitivity
-  targetPitchRate = -offsetY * settings.turnRateSensitivity
-  targetRoll = offsetX * maxTurnAngle * 1.5  // Mouse left/right = roll (banking)
 })
 window.addEventListener('mousedown', function () {
   targetThrust = 1
 })
 window.addEventListener('mouseup', function () {
   targetThrust = 0
+  targetYawRate = 0
+  targetPitchRate = 0
 })
 window.addEventListener('mouseleave', function () {
   targetThrust = 0
