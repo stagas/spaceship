@@ -512,7 +512,8 @@ function createControls() {
   `
 
   let isCollapsed = false
-  collapseBtn.onclick = () => {
+
+  function toggleCollapse() {
     isCollapsed = !isCollapsed
     const sliders = controls.querySelectorAll('label')
     sliders.forEach(slider => {
@@ -520,6 +521,8 @@ function createControls() {
     })
     collapseBtn.innerHTML = isCollapsed ? '▼' : '▲'
   }
+
+  collapseBtn.onclick = toggleCollapse
 
   controls.appendChild(collapseBtn)
 
