@@ -20,7 +20,7 @@ let width, height, centerX, centerY
 const stars = []
 let thrust = 0, targetThrust = 0
 let shipX = 0, shipY = 0, shipZ = 0
-const orientation = new THREE.Quaternion()
+const shipOrientation = new THREE.Quaternion()
 let roll = 0
 let yawRate = 0, pitchRate = 0
 let targetYawRate = 0, targetPitchRate = 0, targetRoll = 0
@@ -46,7 +46,7 @@ function initThreeJS() {
 
   // Scene setup
   scene = new THREE.Scene()
-  camera = new THREE.PerspectiveCamera(75, width / height, 0.01, 1000)
+  camera = new THREE.PerspectiveCamera(75, width / height, 0.01, 50000)
   renderer = new THREE.WebGLRenderer({ canvas: threeCanvas, alpha: true })
   renderer.setSize(width, height)
   renderer.setClearColor(0x000000, 0)
@@ -135,9 +135,9 @@ function addThrusterGlow(baseVerts) {
 function updateSpaceship() {
   if (spaceship) {
     // Apply visual tilt based on turn rate, and roll
-    spaceship.rotation.z = roll
-    spaceship.rotation.y = yawRate * -10
-    spaceship.rotation.x = pitchRate * 10
+    spaceship.rotation.z = -roll
+    // spaceship.rotation.y = yawRate * -1
+    spaceship.rotation.x = pitchRate * 5
 
     // Scale thruster glows based on thrust
     spaceship.children.forEach(child => {
@@ -237,7 +237,7 @@ function prepareStar(star) {
   const rollQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -roll)
 
   // Get the ship's main orientation and combine it with the roll
-  const inverseOrientation = orientation.clone().invert()
+  const inverseOrientation = shipOrientation.clone().invert()
   const finalInverseRotation = new THREE.Quaternion().multiplyQuaternions(rollQuat, inverseOrientation)
 
   // Apply the final rotation to the star's position
@@ -332,10 +332,10 @@ function animate() {
   // Update orientation with quaternions to prevent gimbal lock
   const yawQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yawRate)
   const pitchQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitchRate)
-  orientation.multiply(yawQuat).multiply(pitchQuat).normalize()
+  shipOrientation.multiply(yawQuat).multiply(pitchQuat).normalize()
 
   // Move ship forward in its facing direction
-  const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(orientation)
+  const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(shipOrientation)
 
   shipX += forward.x * speed * 100
   shipY += forward.y * speed * 100
@@ -366,6 +366,9 @@ function animate() {
 
   // Update and render 3D spaceship
   updateSpaceship()
+  for (const laser of lasers) {
+    renderFireball(laser)
+  }
   updateLasers()
   renderThreeJS()
 
@@ -421,43 +424,70 @@ window.addEventListener('mouseleave', function () {
   targetRoll = 0
 })
 window.addEventListener('keydown', function (event) {
-  if (event.key === 'z') {
+  if (event.key === 'z' || event.key === ' ') {
     shootLaser()
   }
 })
 
 function shootLaser() {
-  // Create laser geometry
-  const laserLength = 100
-  const laserGeometry = new THREE.CylinderGeometry(0.1, 0.1, laserLength, 16)
-  const laserMaterial = new THREE.MeshBasicMaterial({
-    color: 0xff0000,
-    transparent: true,
-    opacity: 1.0,
-  })
+  // Get the ship's orientation to calculate forward direction
+  const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(shipOrientation)
 
-  const laserMesh = new THREE.Mesh(laserGeometry, laserMaterial)
+  // Start position slightly in front of the ship
+  const startPosition = {
+    x: shipX + forward.x * 50,
+    y: shipY + forward.y * 50,
+    z: shipZ + forward.z * 50,
+  }
 
-  // Position laser to start exactly at the ship's apex (nose)
-  // Apex is at (0, 1/3, -13/3) after centering ship on base's centroid
-  const apexY = 1 / 3
-  const apexZ = -13 / 3
-  // Offset by half cylinder length so it starts at the apex and extends forward
-  laserMesh.position.set(0, apexY, apexZ - laserLength / 2)
-
-  // Rotate cylinder to point forward (default is along Y-axis, we want along Z-axis)
-  laserMesh.rotation.x = -Math.PI / 2
-
-  // Add laser to the ship so it moves with it
-  spaceship.add(laserMesh)
+  // Velocity in the direction the ship is facing
+  const velocity = {
+    x: forward.x * 30,
+    y: forward.y * 30,
+    z: forward.z * 30,
+  }
 
   // Add to tracking array
   lasers.push({
-    mesh: laserMesh,
-    material: laserMaterial,
-    life: 20,
-    maxLife: 20
+    x: startPosition.x,
+    y: startPosition.y,
+    z: startPosition.z,
+    velocity: velocity,
+    life: 120,
+    maxLife: 120,
   })
+}
+
+function renderFireball(laser) {
+  const cam = worldToCamera(laser.x, laser.y, laser.z)
+
+  const rollQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -roll)
+  const inverseOrientation = shipOrientation.clone().invert()
+  const finalInverseRotation = new THREE.Quaternion().multiplyQuaternions(rollQuat, inverseOrientation)
+
+  const laserVec = new THREE.Vector3(cam.x, cam.y, cam.z)
+  laserVec.applyQuaternion(finalInverseRotation)
+
+  if (laserVec.z <= 0) return
+
+  const screenX = (laserVec.x / laserVec.z) * settings.projectionScale + centerX
+  const screenY = (laserVec.y / laserVec.z) * settings.projectionScale + centerY + 70
+
+  if (screenX < 0 || screenX > width || screenY < 0 || screenY > height) return
+
+  const distance = Math.sqrt(laserVec.x * laserVec.x + laserVec.y * laserVec.y + laserVec.z * laserVec.z)
+  const size = Math.max(1, 2000 / distance)
+  const opacity = Math.max(0.1, Math.min(1, 2000 / distance)) * (laser.life / laser.maxLife)
+
+  ctx.fillStyle = `rgba(255, 100, 0, ${opacity})`
+  ctx.beginPath()
+  ctx.arc(screenX, screenY, size, 0, 2 * Math.PI)
+  ctx.fill()
+
+  ctx.fillStyle = `rgba(255, 255, 0, ${opacity * 0.8})`
+  ctx.beginPath()
+  ctx.arc(screenX, screenY, size * 0.6, 0, 2 * Math.PI)
+  ctx.fill()
 }
 
 function createControls() {
@@ -572,11 +602,11 @@ function updateLasers() {
     laser.life -= 1
 
     if (laser.life <= 0) {
-      spaceship.remove(laser.mesh)
       lasers.splice(i, 1)
     } else {
-      // Fade out the laser
-      laser.material.opacity = laser.life / laser.maxLife
+      laser.x += laser.velocity.x
+      laser.y += laser.velocity.y
+      laser.z += laser.velocity.z
     }
   }
 }
