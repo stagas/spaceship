@@ -32,6 +32,7 @@ const maxTurnAngle = Math.PI / 6
 // Three.js setup
 let scene, camera, renderer, spaceship
 let threeCanvas
+let lasers = []
 
 function initThreeJS() {
   // Create Three.js canvas
@@ -45,7 +46,7 @@ function initThreeJS() {
 
   // Scene setup
   scene = new THREE.Scene()
-  camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000)
+  camera = new THREE.PerspectiveCamera(75, width / height, 0.01, 1000)
   renderer = new THREE.WebGLRenderer({ canvas: threeCanvas, alpha: true })
   renderer.setSize(width, height)
   renderer.setClearColor(0x000000, 0)
@@ -120,7 +121,7 @@ function addThrusterGlow(baseVerts) {
   const cx = (a[0] + b[0] + c[0]) / 3
   const cy = (a[1] + b[1] + c[1]) / 3
   const cz = (a[2] + b[2] + c[2]) / 3
-  const thrusterGeometry = new THREE.SphereGeometry(0.15, 8, 6)
+  const thrusterGeometry = new THREE.SphereGeometry(0.15, 32, 16)
   const thrusterMaterial = new THREE.MeshBasicMaterial({
     color: 0xff4400,
     transparent: true,
@@ -134,7 +135,7 @@ function addThrusterGlow(baseVerts) {
 function updateSpaceship() {
   if (spaceship) {
     // Apply visual tilt based on turn rate, and roll
-    spaceship.rotation.z = -roll
+    spaceship.rotation.z = roll
     spaceship.rotation.y = yawRate * -10
     spaceship.rotation.x = pitchRate * 10
 
@@ -365,6 +366,7 @@ function animate() {
 
   // Update and render 3D spaceship
   updateSpaceship()
+  updateLasers()
   renderThreeJS()
 
   drawThrustWidget()
@@ -402,18 +404,12 @@ window.addEventListener('mousemove', function (event) {
   mouseY = event.clientY
 })
 window.addEventListener('mousedown', function (event) {
-  if (event.button === 0) { // Left click
-    targetThrust = 1
-  } else if (event.button === 2) { // Right click
-    targetThrust = 1
-  }
+  targetThrust = 1
 })
 window.addEventListener('mouseup', function (event) {
-  if (event.button === 0 || event.button === 2) { // Left or right click
-    targetThrust = 0
-    targetYawRate = 0
-    targetPitchRate = 0
-  }
+  targetThrust = 0
+  targetYawRate = 0
+  targetPitchRate = 0
 })
 window.addEventListener('contextmenu', function (event) {
   event.preventDefault() // Prevent context menu
@@ -424,6 +420,45 @@ window.addEventListener('mouseleave', function () {
   targetPitchRate = 0
   targetRoll = 0
 })
+window.addEventListener('keydown', function (event) {
+  if (event.key === 'z') {
+    shootLaser()
+  }
+})
+
+function shootLaser() {
+  // Create laser geometry
+  const laserLength = 100
+  const laserGeometry = new THREE.CylinderGeometry(0.1, 0.1, laserLength, 16)
+  const laserMaterial = new THREE.MeshBasicMaterial({
+    color: 0xff0000,
+    transparent: true,
+    opacity: 1.0,
+  })
+
+  const laserMesh = new THREE.Mesh(laserGeometry, laserMaterial)
+
+  // Position laser to start exactly at the ship's apex (nose)
+  // Apex is at (0, 1/3, -13/3) after centering ship on base's centroid
+  const apexY = 1 / 3
+  const apexZ = -13 / 3
+  // Offset by half cylinder length so it starts at the apex and extends forward
+  laserMesh.position.set(0, apexY, apexZ - laserLength / 2)
+
+  // Rotate cylinder to point forward (default is along Y-axis, we want along Z-axis)
+  laserMesh.rotation.x = -Math.PI / 2
+
+  // Add laser to the ship so it moves with it
+  spaceship.add(laserMesh)
+
+  // Add to tracking array
+  lasers.push({
+    mesh: laserMesh,
+    material: laserMaterial,
+    life: 20,
+    maxLife: 20
+  })
+}
 
 function createControls() {
   const controls = document.getElementById('controls')
@@ -431,7 +466,7 @@ function createControls() {
 
   // Add collapse button
   const collapseBtn = document.createElement('button')
-  collapseBtn.innerHTML = '▼'
+  collapseBtn.innerHTML = '▲'
   collapseBtn.style.cssText = `
     position: absolute;
     bottom: -20px;
@@ -529,3 +564,19 @@ function createControls() {
 
 createControls()
 animate()
+
+// Update lasers
+function updateLasers() {
+  for (let i = lasers.length - 1; i >= 0; i--) {
+    const laser = lasers[i]
+    laser.life -= 1
+
+    if (laser.life <= 0) {
+      spaceship.remove(laser.mesh)
+      lasers.splice(i, 1)
+    } else {
+      // Fade out the laser
+      laser.material.opacity = laser.life / laser.maxLife
+    }
+  }
+}
