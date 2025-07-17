@@ -406,23 +406,37 @@ window.addEventListener('mousemove', function (event) {
   mouseX = event.clientX
   mouseY = event.clientY
 })
-window.addEventListener('mousedown', function (event) {
-  targetThrust = 1
-})
-window.addEventListener('mouseup', function (event) {
+// Touch navigation for mobile
+canvas.addEventListener('touchstart', function (event) {
+  if (event.touches.length > 0) {
+    const touch = event.touches[0]
+    mouseX = touch.clientX
+    mouseY = touch.clientY
+    targetThrust = 1
+    event.preventDefault()
+  }
+}, { passive: false })
+canvas.addEventListener('touchmove', function (event) {
+  if (event.touches.length > 0) {
+    const touch = event.touches[0]
+    mouseX = touch.clientX
+    mouseY = touch.clientY
+    event.preventDefault()
+  }
+}, { passive: false })
+canvas.addEventListener('touchend', function (event) {
   targetThrust = 0
   targetYawRate = 0
   targetPitchRate = 0
-})
-window.addEventListener('contextmenu', function (event) {
-  event.preventDefault() // Prevent context menu
-})
-window.addEventListener('mouseleave', function () {
+  event.preventDefault()
+}, { passive: false })
+canvas.addEventListener('touchcancel', function (event) {
   targetThrust = 0
   targetYawRate = 0
   targetPitchRate = 0
   targetRoll = 0
-})
+  event.preventDefault()
+}, { passive: false })
 window.addEventListener('keydown', function (event) {
   if (event.key === 'z' || event.key === ' ') {
     shootLaser()

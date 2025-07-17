@@ -3,9 +3,19 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
   <title>Spaceship</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    html,
+    body,
+    #starCanvas {
+      touch-action: none;
+      -ms-touch-action: none;
+      overscroll-behavior: none;
+    }
+  </style>
 </head>
 
 <body>
