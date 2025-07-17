@@ -401,13 +401,22 @@ window.addEventListener('mousemove', function (event) {
   mouseX = event.clientX
   mouseY = event.clientY
 })
-window.addEventListener('mousedown', function () {
-  targetThrust = 1
+window.addEventListener('mousedown', function (event) {
+  if (event.button === 0) { // Left click
+    targetThrust = 1
+  } else if (event.button === 2) { // Right click
+    targetThrust = 1
+  }
 })
-window.addEventListener('mouseup', function () {
-  targetThrust = 0
-  targetYawRate = 0
-  targetPitchRate = 0
+window.addEventListener('mouseup', function (event) {
+  if (event.button === 0 || event.button === 2) { // Left or right click
+    targetThrust = 0
+    targetYawRate = 0
+    targetPitchRate = 0
+  }
+})
+window.addEventListener('contextmenu', function (event) {
+  event.preventDefault() // Prevent context menu
 })
 window.addEventListener('mouseleave', function () {
   targetThrust = 0
@@ -419,6 +428,35 @@ window.addEventListener('mouseleave', function () {
 function createControls() {
   const controls = document.getElementById('controls')
   controls.innerHTML = ''
+
+  // Add collapse button
+  const collapseBtn = document.createElement('button')
+  collapseBtn.innerHTML = '▼'
+  collapseBtn.style.cssText = `
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    border: 1px solid #555;
+    color: #fff;
+    padding: 2px 8px;
+    cursor: pointer;
+    border-radius: 0 0 4px 4px;
+    font-size: 12px;
+  `
+
+  let isCollapsed = false
+  collapseBtn.onclick = () => {
+    isCollapsed = !isCollapsed
+    const sliders = controls.querySelectorAll('label')
+    sliders.forEach(slider => {
+      slider.style.display = isCollapsed ? 'none' : 'block'
+    })
+    collapseBtn.innerHTML = isCollapsed ? '▼' : '▲'
+  }
+
+  controls.appendChild(collapseBtn)
 
   function autoRange(value, step = 1, minDefault = 0.001) {
     let min = value / 10
