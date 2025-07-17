@@ -406,6 +406,24 @@ window.addEventListener('mousemove', function (event) {
   mouseX = event.clientX
   mouseY = event.clientY
 })
+// Mouse events for desktop thrust
+window.addEventListener('mousedown', function (event) {
+  targetThrust = 1
+})
+window.addEventListener('mouseup', function (event) {
+  targetThrust = 0
+  targetYawRate = 0
+  targetPitchRate = 0
+})
+window.addEventListener('contextmenu', function (event) {
+  event.preventDefault() // Prevent context menu
+})
+window.addEventListener('mouseleave', function () {
+  targetThrust = 0
+  targetYawRate = 0
+  targetPitchRate = 0
+  targetRoll = 0
+})
 // Touch navigation for mobile
 canvas.addEventListener('touchstart', function (event) {
   if (event.touches.length > 0) {
