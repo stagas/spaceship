@@ -504,6 +504,41 @@ function renderFireball(laser) {
   ctx.fill()
 }
 
+function isMobile() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+}
+
+function createMobileShootButton() {
+  if (!isMobile()) return
+  if (document.querySelector('.mobile-shoot-btn')) return
+  const shootBtn = document.createElement('button')
+  shootBtn.innerText = 'SHOOT'
+  shootBtn.className = 'mobile-shoot-btn'
+  shootBtn.style.cssText = `
+    position: fixed;
+    right: 6vw;
+    bottom: 4vh;
+    width: 64px;
+    height: 64px;
+    font-size: 16px;
+    font-weight: bold;
+    background: #ff4400;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px #0008;
+    cursor: pointer;
+    z-index: 100;
+    opacity: 0.92;
+    transition: background 0.2s;
+  `
+  shootBtn.ontouchstart = shootBtn.onclick = function (e) {
+    shootLaser()
+    e.preventDefault()
+  }
+  document.body.appendChild(shootBtn)
+}
+
 function createControls() {
   const controls = document.getElementById('controls')
   controls.innerHTML = ''
@@ -523,6 +558,7 @@ function createControls() {
     cursor: pointer;
     border-radius: 0 0 4px 4px;
     font-size: 12px;
+    z-index: 2;
   `
 
   let isCollapsed = false
@@ -607,9 +643,16 @@ function createControls() {
   slider('Trail Alpha', 'starTrailAlpha', 0.01)
   slider('Turn Rate', 'turnRateSensitivity', 0.001)
   slider('Trail Length', 'trailLength', 1)
+
+  // Start collapsed on mobile
+  if (isMobile()) {
+    isCollapsed = false
+    requestAnimationFrame(() => toggleCollapse())
+  }
 }
 
 createControls()
+createMobileShootButton()
 animate()
 
 // Update lasers
